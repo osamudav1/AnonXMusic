@@ -2,7 +2,6 @@
 # Licensed under the MIT License.
 # This file is part of AnonXMusic
 
-
 import os
 import re
 import yt_dlp
@@ -31,11 +30,18 @@ class YouTube:
         )
 
     def get_cookies(self):
+        # 🔧 FIX: Root directory က cookies.txt ကိုပထမဆုံးစစ်
+        if os.path.exists("cookies.txt"):
+            return "cookies.txt"
+        
+        # anony/cookies ထဲကိုစစ်
         if not self.checked:
-            for file in os.listdir(self.cookie_dir):
-                if file.endswith(".txt"):
-                    self.cookies.append(f"{self.cookie_dir}/{file}")
+            if os.path.exists(self.cookie_dir):
+                for file in os.listdir(self.cookie_dir):
+                    if file.endswith(".txt"):
+                        self.cookies.append(f"{self.cookie_dir}/{file}")
             self.checked = True
+        
         if not self.cookies:
             if not self.warned:
                 self.warned = True
@@ -44,16 +50,9 @@ class YouTube:
         return random.choice(self.cookies)
 
     async def save_cookies(self, urls: list[str]) -> None:
-        logger.info("Saving cookies from urls...")
-        async with aiohttp.ClientSession() as session:
-            for url in urls:
-                name = url.split("/")[-1]
-                link = "https://batbin.me/raw/" + name
-                async with session.get(link) as resp:
-                    resp.raise_for_status()
-                    with open(f"{self.cookie_dir}/{name}.txt", "wb") as fw:
-                        fw.write(await resp.read())
-        logger.info(f"Cookies saved in {self.cookie_dir}.")
+        # 🔧 FIX: ဒီ function ကို ဘာမှမလုပ်အောင်လုပ် (cookies.txt က root မှာရှိပြီး)
+        logger.info("✅ Cookies found at root directory (cookies.txt)")
+        return
 
     def valid(self, url: str) -> bool:
         return bool(re.match(self.regex, url))
@@ -116,7 +115,7 @@ class YouTube:
             "no_warnings": True,
             "overwrites": False,
             "nocheckcertificate": True,
-            "cookiefile": cookie,
+            "cookiefile": cookie,  # 🔧 FIX: cookies.txt ကို သုံးမယ်
         }
 
         if video:
@@ -136,7 +135,8 @@ class YouTube:
                 try:
                     ydl.download([url])
                 except (yt_dlp.utils.DownloadError, yt_dlp.utils.ExtractorError):
-                    if cookie: self.cookies.remove(cookie)
+                    if cookie and cookie in self.cookies:
+                        self.cookies.remove(cookie)
                     return None
                 except Exception as ex:
                     logger.warning("Download failed: %s", ex)
